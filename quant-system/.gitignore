@@ -5,8 +5,9 @@ credentials.env
 *.key
 
 # 数据与中间产物
-# 注：data/ 不再忽略 —— 量化选股建议与复盘报告落盘在 data/advice/<日期>/，
-#     前端「量化选股」「复盘」两页直接读它；不同步会导致部署机上两页空白。
+# 注：data/ 保持忽略 —— 它是运行期落盘数据（体积大、按天累积、可重建）。
+#     跨机迁移请用压缩包/rsync 单独同步，不要塞进 git 历史。
+data/
 quant-research/
 *.parquet
 *.duckdb
