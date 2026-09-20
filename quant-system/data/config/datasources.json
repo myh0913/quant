@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "datasources": [
+    {
+      "id": "eltdx",
+      "label": "eltdx 本地行情",
+      "kind": "tcp",
+      "capabilities": [
+        "auction_top_amount",
+        "opening_match",
+        "minute_points",
+        "quote_snapshot"
+      ],
+      "desc": "竞价成交额排名 / 开盘匹配 / 分钟分时（策略一二三主行情源）"
+    },
+    {
+      "id": "hithink",
+      "label": "同花顺 iFind",
+      "kind": "http",
+      "capabilities": [
+        "limit_up_pool",
+        "limit_down_pool",
+        "limit_break_pool",
+        "daily_bars",
+        "auction_snapshot",
+        "ladder",
+        "valuation"
+      ],
+      "desc": "涨停/跌停/炸板池 / 日线 / 竞价快照 / 连板梯队"
+    },
+    {
+      "id": "xuangutong",
+      "label": "选股通",
+      "kind": "http",
+      "capabilities": [
+        "market_sentiment",
+        "theme_rank",
+        "theme_stocks",
+        "newsflash"
+      ],
+      "desc": "市场情绪指标 / 题材排行 / 快讯"
+    },
+    {
+      "id": "eastmoney",
+      "label": "东方财富",
+      "kind": "http",
+      "capabilities": [
+        "restricted_stocks",
+        "unusual_stocks"
+      ],
+      "desc": "监管名单 / 严重异动（风控输入）"
+    }
+  ],
+  "capability_providers": {
+    "limit_up_pool": [
+      "hithink",
+      "xuangutong"
+    ],
+    "limit_down_pool": [
+      "hithink"
+    ],
+    "minute_points": [
+      "eltdx"
+    ],
+    "opening_match": [
+      "eltdx"
+    ],
+    "auction_top_amount": [
+      "eltdx"
+    ],
+    "auction_series": [
+      "eltdx"
+    ],
+    "pre_close": [
+      "eltdx"
+    ],
+    "daily_bars": [
+      "hithink"
+    ],
+    "market_sentiment": [
+      "xuangutong"
+    ],
+    "index_snapshot": [
+      "hithink"
+    ],
+    "monitor_stocks": [
+      "eastmoney"
+    ],
+    "trading_calendar": [
+      "hithink"
+    ]
+  }
+}

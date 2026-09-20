@@ -1,6 +1,7 @@
 // =========================================================
 // 业务类型（选股通风格）
 // =========================================================
+import { APP_BASE } from '../lib/appBase';
 
 /** 市场情绪 */
 export interface Sentiment {
@@ -512,7 +513,7 @@ export interface DataSourceConfig {
 export const DEFAULT_DS_CONFIG: DataSourceConfig = {
   wsUrl: `${
     typeof location !== 'undefined' && location.protocol === 'https:' ? 'wss' : 'ws'
-  }://${typeof location !== 'undefined' ? location.host : 'localhost:5273'}/ws`,
+  }://${typeof location !== 'undefined' ? location.host : 'localhost:5273'}${APP_BASE}/ws`,
 };
 
 // =========================================================

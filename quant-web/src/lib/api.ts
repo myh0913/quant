@@ -25,8 +25,11 @@ import type {
   BacktestListItem,
   BacktestReport,
 } from '../types';
+import { APP_BASE } from './appBase';
 
-const BASE = (url: string) => url.replace(/\/$/, '');
+// 调用方一律传 '/api'；这里统一补上应用挂载前缀（生产 '/qg'，本地 dev ''），
+// 使子路径反代部署下请求命中 /qg/api/*，而不是裸根路径 /api/*。
+const BASE = (url: string) => `${APP_BASE}${url.replace(/\/$/, '')}`;
 
 /** 401 时派发全局事件（App 监听后切到登录页） */
 function handle(res: Response, path: string): Promise<unknown> {

@@ -5,7 +5,8 @@ credentials.env
 *.key
 
 # 数据与中间产物
-data/
+# 注：data/ 不再忽略 —— 量化选股建议与复盘报告落盘在 data/advice/<日期>/，
+#     前端「量化选股」「复盘」两页直接读它；不同步会导致部署机上两页空白。
 quant-research/
 *.parquet
 *.duckdb

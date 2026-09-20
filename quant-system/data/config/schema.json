@@ -1,0 +1,433 @@
+{
+  "version": 1,
+  "strategies": {
+    "auction_grab": {
+      "label": "竞价主力抢筹",
+      "params": [
+        {
+          "key": "min_rise",
+          "label": "9:20→9:25 最小拉升",
+          "type": "percent",
+          "default": 0.02,
+          "min": 0.0,
+          "max": 0.2,
+          "step": 0.001,
+          "desc": "9:25 价格相对 9:20 的最小涨幅，默认 2%（用户定义 2026-09-05）"
+        },
+        {
+          "key": "max_chg_925",
+          "label": "9:25 最高涨幅",
+          "type": "percent",
+          "default": 0.05,
+          "min": 0.0,
+          "max": 0.3,
+          "step": 0.001,
+          "desc": "9:25 相对昨收的最大涨幅，达到即放弃（追高风险），默认 5%"
+        },
+        {
+          "key": "limit",
+          "label": "竞价候选数",
+          "type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "unit": "只",
+          "desc": "按竞价成交额取前 N 名作为候选池"
+        },
+        {
+          "key": "base_position_pct",
+          "label": "基准单票仓位",
+          "type": "percent",
+          "default": 0.2,
+          "min": 0.05,
+          "max": 0.5,
+          "step": 0.05,
+          "desc": "单票建议仓位基数，实际 = 此值 × 周期系数（M3 仓位梯度，默认 20%）"
+        }
+      ]
+    },
+    "dragon": {
+      "label": "龙回头",
+      "params": [
+        {
+          "key": "wave_volume_ratio_max",
+          "label": "首阴量/连板峰值上限",
+          "type": "float",
+          "default": 1.5,
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.1,
+          "unit": "倍",
+          "desc": "首阴量 > 连板交易日最高成交量 × 此值 → 排除（2026-09-19 用户规则 1.5x）"
+        },
+        {
+          "key": "shape_high_open_pct",
+          "label": "首阴形态高开阈值",
+          "type": "percent",
+          "default": 0.03,
+          "min": 0.005,
+          "max": 0.15,
+          "step": 0.005,
+          "desc": "首阴日开盘涨幅 ≥ 此值 → 要求 9:33 前深水 + 其后收敛（用户规则 默认 +3%）"
+        },
+        {
+          "key": "shape_morning_low_pct",
+          "label": "首阴形态早盘深水",
+          "type": "percent",
+          "default": -0.02,
+          "min": -0.1,
+          "max": -0.001,
+          "step": 0.005,
+          "desc": "首阴高开分支：截至 9:33 的当日最低涨幅 ≤ 此值（默认 -2%）"
+        },
+        {
+          "key": "shape_low_open_pct",
+          "label": "首阴形态低开阈值",
+          "type": "percent",
+          "default": -0.02,
+          "min": -0.1,
+          "max": -0.001,
+          "step": 0.005,
+          "desc": "首阴日开盘涨幅 ≤ 此值 → 要求全天振幅收敛（默认 -2%）"
+        },
+        {
+          "key": "shape_range_pct",
+          "label": "首阴形态振幅上限",
+          "type": "percent",
+          "default": 0.03,
+          "min": 0.005,
+          "max": 0.1,
+          "step": 0.005,
+          "desc": "高开/平开分支=9:33→收盘 / 低开分支=全天的（最高-最低）/昨收 ≤ 此值（默认 3%）"
+        },
+        {
+          "key": "shape_low_volume_ratio",
+          "label": "首阴低开量能上限",
+          "type": "float",
+          "default": 0.8,
+          "min": 0.1,
+          "max": 2.0,
+          "step": 0.05,
+          "unit": "倍",
+          "desc": "首阴低开分支：首阴量须 < 连板峰值 × 此值（用户规则 默认 0.8x，缩量低开）"
+        },
+        {
+          "key": "shape_flat_volume_ratio",
+          "label": "首阴平开量能上限",
+          "type": "float",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 2.0,
+          "step": 0.05,
+          "unit": "倍",
+          "desc": "首阴平开分支：首阴量须 < 连板峰值 × 此值（用户规则 默认 1.0x）"
+        },
+        {
+          "key": "scene_d_low_open",
+          "label": "场景D 大幅低开",
+          "type": "percent",
+          "default": -0.05,
+          "min": -0.1,
+          "max": -0.01,
+          "step": 0.005,
+          "desc": "竞价涨幅 ≤ 此值 → 场景D 直接买入（默认 -5%）"
+        },
+        {
+          "key": "scene_e_low_open",
+          "label": "场景E 低开下限",
+          "type": "percent",
+          "default": -0.03,
+          "min": -0.08,
+          "max": -0.001,
+          "step": 0.005,
+          "desc": "竞价涨幅在 [此值, 0) → 场景E 待承接横盘确认（默认 -3%）"
+        },
+        {
+          "key": "max_chase_open",
+          "label": "高开不追上限",
+          "type": "percent",
+          "default": 0.05,
+          "min": 0.01,
+          "max": 0.15,
+          "step": 0.005,
+          "desc": "竞价涨幅 ≥ 此值 → 高开高走不追（默认 5%）"
+        },
+        {
+          "key": "hengpan_range_pct",
+          "label": "横盘波动带",
+          "type": "percent",
+          "default": 0.02,
+          "min": 0.005,
+          "max": 0.05,
+          "step": 0.001,
+          "desc": "承接/横盘确认分钟内价格波动 ±此值内（用户定义 ±2%）"
+        },
+        {
+          "key": "chengjie_minutes",
+          "label": "承接时长",
+          "type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 15,
+          "step": 1,
+          "unit": "分钟",
+          "desc": "承接确认分钟数（用户定义 3 分钟）"
+        },
+        {
+          "key": "hengpan_minutes",
+          "label": "横盘时长",
+          "type": "int",
+          "default": 10,
+          "min": 3,
+          "max": 30,
+          "step": 1,
+          "unit": "分钟",
+          "desc": "连续横盘分钟数（用户定义 10 分钟）"
+        },
+        {
+          "key": "base_position_pct",
+          "label": "基准单票仓位",
+          "type": "percent",
+          "default": 0.2,
+          "min": 0.05,
+          "max": 0.5,
+          "step": 0.05,
+          "desc": "单票建议仓位基数，实际 = 此值 × 周期系数（M3 仓位梯度，默认 20%）"
+        }
+      ]
+    },
+    "lianban": {
+      "label": "连板捉妖",
+      "params": [
+        {
+          "key": "min_first_board_volume_ratio",
+          "label": "首板最小量比",
+          "type": "float",
+          "default": 1.5,
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.1,
+          "unit": "倍",
+          "desc": "首板量/波启动前一日量 ≥ 此值（建池规则4，用户 2026-09-09 确认 1.5）"
+        },
+        {
+          "key": "max_position_ratio",
+          "label": "位置过滤上限",
+          "type": "float",
+          "default": 1.15,
+          "min": 1.0,
+          "max": 2.0,
+          "step": 0.01,
+          "unit": "倍",
+          "desc": "首板前日开盘/最近30日最低 < 此值（低位启动过滤，规则5）"
+        },
+        {
+          "key": "first_wave_lookback_days",
+          "label": "第一波回看天数",
+          "type": "int",
+          "default": 20,
+          "min": 5,
+          "max": 60,
+          "step": 1,
+          "unit": "天",
+          "desc": "回看 N 个交易日内无其他连板波才算第一波（规则1）"
+        },
+        {
+          "key": "auction_limit_down_pct",
+          "label": "竞价跌停判定",
+          "type": "percent",
+          "default": -0.098,
+          "min": -0.11,
+          "max": -0.05,
+          "step": 0.001,
+          "desc": "昨日连板票竞价涨幅 ≤ 此值记为竞价跌停（默认 -9.8%）"
+        },
+        {
+          "key": "max_auction_limit_down",
+          "label": "竞价跌停数上限",
+          "type": "int",
+          "default": 2,
+          "min": 0,
+          "max": 10,
+          "step": 1,
+          "unit": "只",
+          "desc": "昨日连板票今日竞价跌停数超过此值 → 环境否决（用户规则：≤2）"
+        },
+        {
+          "key": "scene_a_low_open",
+          "label": "场景A 大幅低开",
+          "type": "percent",
+          "default": -0.05,
+          "min": -0.1,
+          "max": -0.01,
+          "step": 0.005,
+          "desc": "竞价涨幅 ≤ 此值 → 场景A 直接买入（默认 -5%）"
+        },
+        {
+          "key": "scene_b_low_open",
+          "label": "场景B 低开下限",
+          "type": "percent",
+          "default": -0.05,
+          "min": -0.08,
+          "max": -0.001,
+          "step": 0.005,
+          "desc": "竞价涨幅在 [此值, 0) → 场景B 待盘中放量上攻（默认 -5%，用户 2026-09-17 调整）"
+        },
+        {
+          "key": "intraday_window_min",
+          "label": "盘中观察窗口",
+          "type": "int",
+          "default": 10,
+          "min": 5,
+          "max": 120,
+          "step": 1,
+          "unit": "分钟",
+          "desc": "仅开盘后前 N 分钟内寻找 B/C 触发，超时不触发（默认 10 分钟，用户 2026-09-17 调整）"
+        },
+        {
+          "key": "intraday_min_rise",
+          "label": "盘中快速分钟涨跌",
+          "type": "percent",
+          "default": 0.01,
+          "min": 0.002,
+          "max": 0.05,
+          "step": 0.001,
+          "desc": "单分钟涨/跌幅 ≥ 此值视为快速（用户定义 1%）"
+        },
+        {
+          "key": "intraday_vol_multiple",
+          "label": "盘中放量倍数",
+          "type": "float",
+          "default": 1.5,
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.1,
+          "unit": "倍",
+          "desc": "触发分钟量 ≥ 前5分钟均量 × 此值（默认 1.5x）"
+        },
+        {
+          "key": "base_position_pct",
+          "label": "基准单票仓位",
+          "type": "percent",
+          "default": 0.2,
+          "min": 0.05,
+          "max": 0.5,
+          "step": 0.05,
+          "desc": "单票建议仓位基数，实际 = 此值 × 周期系数（M3 仓位梯度，默认 20%）"
+        }
+      ]
+    },
+    "tailpan": {
+      "label": "龙回头·尾盘",
+      "params": [
+        {
+          "key": "min_open_pct",
+          "label": "场景A 高开下限",
+          "type": "percent",
+          "default": 0.03,
+          "min": 0.005,
+          "max": 0.15,
+          "step": 0.005,
+          "desc": "场景A：今开/昨收-1 ≥ 此值（用户规则 默认 +3%）"
+        },
+        {
+          "key": "morning_low_pct",
+          "label": "场景A 早盘低点上限",
+          "type": "percent",
+          "default": -0.02,
+          "min": -0.1,
+          "max": -0.001,
+          "step": 0.005,
+          "desc": "场景A：截至 9:33 的当日最低涨幅 ≤ 此值（负值，用户规则 默认 -2%）"
+        },
+        {
+          "key": "low_open_pct",
+          "label": "场景B 低开上限",
+          "type": "percent",
+          "default": -0.02,
+          "min": -0.1,
+          "max": -0.001,
+          "step": 0.005,
+          "desc": "场景B：今开/昨收-1 ≤ 此值（用户规则 默认 -2%）"
+        },
+        {
+          "key": "range_pct",
+          "label": "区间振幅上限",
+          "type": "percent",
+          "default": 0.03,
+          "min": 0.005,
+          "max": 0.1,
+          "step": 0.005,
+          "desc": "A/C=9:33 后至尾盘 / B=全天的（最高-最低）/昨收 ≤ 此值（用户规则 默认 3%）"
+        },
+        {
+          "key": "volume_ratio_max",
+          "label": "高开场景量能上限",
+          "type": "float",
+          "default": 1.5,
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.1,
+          "unit": "倍",
+          "desc": "今日成交量 > 连板交易日最大成交量 × 此值 → 排除（用户规则 默认 1.5x）"
+        },
+        {
+          "key": "low_open_volume_ratio",
+          "label": "低开场景量能上限",
+          "type": "float",
+          "default": 0.8,
+          "min": 0.1,
+          "max": 2.0,
+          "step": 0.05,
+          "unit": "倍",
+          "desc": "场景B：今日量须 < 连板峰值 × 此值（用户规则 默认 0.8x，缩量低开）"
+        },
+        {
+          "key": "flat_volume_ratio",
+          "label": "平开场景量能上限",
+          "type": "float",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 2.0,
+          "step": 0.05,
+          "unit": "倍",
+          "desc": "场景C：今日量须 < 连板峰值 × 此值（用户规则 默认 1.0x）"
+        },
+        {
+          "key": "base_position_pct",
+          "label": "基准单票仓位",
+          "type": "percent",
+          "default": 0.2,
+          "min": 0.05,
+          "max": 0.5,
+          "step": 0.05,
+          "desc": "单票建议仓位基数，实际 = 此值 × 周期系数（M3 仓位梯度，默认 20%）"
+        }
+      ]
+    },
+    "portfolio": {
+      "label": "组合风控",
+      "params": [
+        {
+          "key": "max_total_position",
+          "label": "总仓位上限",
+          "type": "float",
+          "default": 0.8,
+          "min": 0.3,
+          "max": 1.0,
+          "step": 0.05,
+          "unit": "比例",
+          "desc": "当日全部建议仓位合计上限（默认 80% 留现金；超出按触发先后降级）"
+        },
+        {
+          "key": "enable_sector_concentration",
+          "label": "同板块集中度（未生效）",
+          "type": "bool",
+          "default": false,
+          "desc": "板块数据源未接入，当前开关不产生任何限制（接入后单板块≤40%）"
+        }
+      ]
+    }
+  }
+}
