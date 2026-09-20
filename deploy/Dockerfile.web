@@ -1,0 +1,55 @@
+# Web 镜像：多阶段构建 —— node 构建前端 dist → python 运行 Flask（同端口托管 dist）。
+# 运行阶段同时携带 quant-system 源码：backend 的沙箱/回放测试以子进程调
+# quant_system.sandbox / quant_system.replay（契约见 backend/main.py:_run_sandbox，
+# cwd=QS_ROOT、PYTHONPATH=QS_ROOT/src），所以解释器必须能 import quant_system。
+FROM node:20-slim AS frontend
+
+WORKDIR /build
+COPY quant-web/package.json quant-web/package-lock.json ./
+RUN npm ci
+COPY quant-web/ ./
+RUN npm run build
+
+
+FROM python:3.12-slim
+
+ENV TZ=Asia/Shanghai \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 后端依赖 + quant-system 运行依赖（子进程共用同一解释器）
+COPY quant-web/backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
+    "pydantic>=2.5" "python-dotenv>=1.0" "eltdx>=3.1.3"
+
+# 后端代码 + quant-system 源码（同 Dockerfile.scheduler：不进 site-packages）
+COPY quant-web/backend /app/backend
+COPY quant-system/src /app/quant-system/src
+
+COPY --from=frontend /build/dist /app/dist
+
+# 全部持久化路径指向共享卷 /app/quant-system/data（compose 挂载）：
+# - advice/config：与 scheduler 容器读写同一目录（建议推送、参数热生效）
+# - lianban_ladder：连板天梯落盘
+# - web：backend SQLite（用户/角色/邀请码）+ .secret_key
+ENV HOST=0.0.0.0 \
+    PORT=8000 \
+    QUANT_WEB_DIST=/app/dist \
+    QUANT_ADVICE_DIR=/app/quant-system/data/advice \
+    QUANT_CONFIG_DIR=/app/quant-system/data/config \
+    QUANT_SYSTEM_PYTHON=/usr/local/bin/python \
+    LIANBAN_LADDER_DIR=/app/quant-system/data/lianban_ladder \
+    QUANT_BACKEND_DATA=/app/quant-system/data/web
+
+WORKDIR /app/backend
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"]
+
+CMD ["python", "main.py"]

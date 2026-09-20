@@ -1,0 +1,111 @@
+2026-09-17 13:54:55,643 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-17 14:45:16,786 INFO [尾盘 2026-09-17] 龙回头尾盘候选 0（拒 12）
+2026-09-17 17:00:33,129 INFO 复盘完成：2026-09-16 建议 7 条（来源 ['竞价主力抢筹', '连板捉妖', '龙回头']）
+2026-09-17 17:00:33,129 INFO [盘后 2026-09-17] 龙回头候选 3（拒 1）；连板捉妖候选 4（拒 4）；周期=分歧；复盘(2026-09-16建议)：7条 竞价主力抢筹 3条 胜率100%；连板捉妖 1条 胜率0%；龙回头 3条 胜率100%
+/Users/gold/.openclaw/workspace/project/watchdog.sh: line 8: nohup: command not found
+2026-09-18 00:58:15,091 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 01:30:47,241 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 01:39:42,679 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 01:45:50,985 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 01:46:03,957 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 09:25:12,001 INFO [竞价主力抢筹 2026-09-18] 周期=分歧 候选=10 建议=2 拦截=0
+2026-09-18 09:26:13,758 WARNING 盘中计划：连板捉妖 被当日周期否决（分歧 → 禁用），本日不监控
+2026-09-18 09:26:13,759 INFO 盘中计划 2026-09-18（prev=2026-09-17）：{'dragon': [('通鼎互联', 'F'), ('英联股份', 'F'), ('北自科技', 'F')], 'lianban': []} 即时建议=0 条 周期复核={'state': '分歧', 'degraded': False, 'vetoed': ['连板捉妖']}
+2026-09-18 09:42:25,554 INFO 盘中触发: 通鼎互联 F 09:32起连续10分钟波动±2%内（承接3分钟+横盘）
+2026-09-18 09:42:25,555 INFO 盘中触发: 英联股份 F 09:32起连续10分钟波动±2%内（承接3分钟+横盘）
+2026-09-18 09:42:25,556 INFO 盘中触发: 北自科技 F 09:33起连续10分钟波动±2%内（承接3分钟+横盘）
+2026-09-18 10:01:03,544 INFO 盘中轮询到点自动结束（10:00）
+2026-09-18 14:45:16,774 INFO [尾盘 2026-09-18] 龙回头尾盘候选 0（拒 9）周期=分歧
+2026-09-18 17:00:32,265 INFO 快照清理：删除 2026-09-11 前目录 3 个（保留 7 天）
+2026-09-18 17:00:32,586 INFO 涨停池对账通过：{'hithink': 77, 'xuangutong': 79}
+2026-09-18 17:00:33,136 INFO 复盘完成：2026-09-17 建议 4 条（来源 ['竞价主力抢筹', '连板捉妖', '龙回头']）
+2026-09-18 17:00:33,142 INFO 版本绩效聚合完成 → /Users/gold/.openclaw/workspace/project/quant-system/data/config/perf.json（3 策略）
+2026-09-18 17:00:33,142 INFO [盘后 2026-09-18] 龙回头候选 3（拒 7）；连板捉妖候选 6（拒 3）；周期=分歧；复盘(2026-09-17建议)：4条 竞价主力抢筹 2条 胜率100%/100%(收)；连板捉妖 1条 胜率0%/0%(收)；龙回头 1条 胜率100%/0%(收)
+2026-09-18 18:38:19,646 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 19:13:30,421 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 19:30:40,972 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-18 19:36:33,961 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-19 00:00:00,862 INFO 交易日历未覆盖 2026-09-19（日历最远 2026-09-18），按周一至五兜底
+2026-09-19 20:51:51,635 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-19 20:51:51,638 INFO 交易日历未覆盖 2026-09-19（日历最远 2026-09-18），按周一至五兜底
+2026-09-19 23:29:07,161 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-19 23:29:07,163 INFO 交易日历未覆盖 2026-09-19（日历最远 2026-09-18），按周一至五兜底
+2026-09-20 00:00:13,616 INFO 交易日历未覆盖 2026-09-20（日历最远 2026-09-18），按周一至五兜底
+2026-09-20 01:09:04,378 INFO quant-system 调度器启动（tick=15s，Ctrl+C 退出）
+2026-09-20 01:09:04,409 INFO 交易日历未覆盖 2026-09-20（日历最远 2026-09-18），按周一至五兜底
+2026-09-20 13:22:59,044 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:22:59,047 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:23:14,109 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:23:14,109 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:23:29,186 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:23:29,187 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:23:44,263 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:23:44,264 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:23:59,317 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:23:59,318 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:24:14,353 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:24:14,353 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:24:29,426 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:24:29,426 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:24:44,504 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:24:44,504 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:24:59,551 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:24:59,551 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:25:14,626 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:25:14,649 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:25:29,725 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:25:29,725 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:25:44,801 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:25:44,801 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:25:59,869 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:25:59,869 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:26:14,878 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:26:14,879 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:26:29,954 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:26:29,955 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:26:45,032 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:26:45,032 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:27:00,102 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:27:00,102 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:27:15,174 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:27:15,174 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:27:30,248 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:27:30,248 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:27:45,322 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:27:45,322 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:28:00,399 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:28:00,399 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:28:15,476 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:28:15,476 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:28:30,553 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:28:30,553 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:28:45,626 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:28:45,626 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:29:00,698 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:29:00,698 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:29:15,769 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:29:15,770 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:29:30,840 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:29:30,840 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:29:45,909 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:29:45,909 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:30:00,985 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:30:00,985 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:30:16,058 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:30:16,059 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:30:31,135 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:30:31,135 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:30:46,210 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:30:46,210 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:31:01,284 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:31:01,284 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:31:16,360 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:31:16,361 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:31:31,438 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:31:31,439 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:31:46,515 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:31:46,516 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:32:01,586 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:32:01,586 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底
+2026-09-20 13:32:16,662 WARNING trading_calendar 取数失败（source=hithink）: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem
+2026-09-20 13:32:16,662 WARNING 交易日历获取失败（[resolve] trading_calendar 全部来源失败: Could not find a suitable TLS CA certificate bundle, invalid path: /Users/gold/.openclaw/workspace/project/quant-system/.venv/lib/python3.14/site-packages/certifi/cacert.pem），按周一至五兜底

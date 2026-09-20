@@ -1,0 +1,19 @@
+# 构建上下文裁剪：不进镜像的内容（密钥/依赖缓存/本地数据）
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.pyc
+**/dist
+**/.secret_key
+.git
+logs
+backups
+
+# 密钥只经 env_file 注入进程环境，绝不进镜像层
+quant-system/.env
+
+# 本地运行数据挂卷注入，不打入镜像
+quant-system/data
+quant-web/backend/data
+quant-web/backend/quant.db
+quant-web/backend/users.json

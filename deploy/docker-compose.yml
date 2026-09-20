@@ -1,0 +1,41 @@
+# 双容器 + 单共享数据卷：
+#   scheduler  quant-system 调度器（竞价 9:25 / 盘中 / 盘后 / 复盘），无对外端口
+#   web        Flask 后端(:8000) + 前端 dist + 沙箱/回放子进程，对外唯一入口
+# 两容器挂同一宿主目录 quant-system/data —— advice 落盘 → WS 推送、
+# 配置保存 → 下一调度 tick 热生效，与本地裸跑行为完全一致。
+#
+# 端口只绑宿主机 127.0.0.1：内网服务器靠宿主机 Tailscale Funnel 暴露
+# （边缘节点终结 HTTPS → 隧道转 localhost:8000），容器层不再对外。
+name: quant
+
+services:
+  scheduler:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.scheduler
+    image: quant-scheduler:latest
+    container_name: quant-scheduler
+    restart: unless-stopped
+    env_file: ../quant-system/.env
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ../quant-system/data:/app/quant-system/data
+    # 无 HTTP 口：进程崩溃靠 restart 兜底，日志 docker logs quant-scheduler
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    image: quant-web:latest
+    container_name: quant-web
+    restart: unless-stopped
+    depends_on:
+      - scheduler
+    env_file: ../quant-system/.env
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ../quant-system/data:/app/quant-system/data

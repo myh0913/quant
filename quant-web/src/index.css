@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; border: 2px solid #0f172a; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+::-webkit-scrollbar-corner { background: #0f172a; }
+
+/* A股配色 */
+.up { color: #ef4444; }
+.down { color: #22c55e; }
+
+/* 推送闪光动画 */
+@keyframes flash-pulse {
+  0% { background-color: rgba(59, 130, 246, 0.35); }
+  100% { background-color: transparent; }
+}
+.flash { animation: flash-pulse 1.2s ease-out; }
+
+/* 数据变化数字闪烁 */
+@keyframes number-pop {
+  0% { transform: translateY(-2px); opacity: 0.6; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.num-pop { animation: number-pop 0.3s ease-out; }

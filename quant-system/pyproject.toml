@@ -1,0 +1,24 @@
+[project]
+name = "quant-system"
+version = "0.1.0"
+description = "A股短线量化选股与股票操作建议系统（只生成建议，不自动交易）"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.5",
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+eltdx = ["eltdx>=3.1.3"]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
