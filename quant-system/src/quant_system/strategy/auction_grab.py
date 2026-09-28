@@ -20,7 +20,16 @@ from pydantic import BaseModel, Field
 
 from .. import config_registry
 from ..advice import Advice, build_advice
-from ..cycle import CycleJudgement, CycleThresholds, DEFAULT_THRESHOLDS, classify, compute_indicators, strategy_gate
+from ..cycle import (
+    CycleJudgement,
+    CycleThresholds,
+    DEFAULT_THRESHOLDS,
+    classify,
+    combined_gate_state,
+    compute_indicators,
+    prev_finalized,
+    strategy_gate,
+)
 from ..datasource.resolve import (
     data_session,
     standard_auction_top_amount,
@@ -158,13 +167,33 @@ class AuctionGrabStrategy(Strategy):
         min_rise = params["min_rise"]
         max_chg_925 = params["max_chg_925"]
 
-        # ---- 情绪周期全局门控 ----
+        # ---- 情绪周期全局门控（2026-09-29 重构：修"竞价门控时序"问题）----
+        # 旧逻辑 classify(compute_indicators(today)) 在 9:25 恒 data_degraded
+        # （炸板率/晋级率要等涨停池 ~14:56 入库），降级误判状态做门控不可信。
+        # 新合成：当日 classify（仅非降级采信）⊕ T-1 定版 ⊕ 实时恶化腿，取更差者；
+        # 全部缺失 → 放行并留痕（绝不静默禁用）。
         cycle_j: CycleJudgement | None = None
         gate_ok, gate_factor, gate_note = True, 1.0, ""
         try:
-            indicators = compute_indicators(settings, date)
-            cycle_j = classify(indicators, thresholds)
-            gate_ok, gate_factor, gate_note = strategy_gate(cycle_j.state, self.label, cycle_j.overheated)
+            from ..scheduler import prev_trading_day  # 函数级导入避免环
+
+            prev = prev_trading_day(settings, date)
+            pf = prev_finalized(settings, prev) if prev else None
+            try:
+                today_j = classify(compute_indicators(settings, date), thresholds)
+            except Exception as exc:  # noqa: BLE001
+                today_j = None
+                gate_note = f"当日周期计算失败（{exc}）；"
+            state, over, reasons, _deg = combined_gate_state(
+                settings, date,
+                pf["state"] if pf else None, bool(pf["overheated"]) if pf else False, today_j,
+            )
+            if state is None:
+                gate_note += "；".join(reasons)
+                cycle_j = None
+            else:
+                cycle_j = CycleJudgement(state=state, reasons=reasons)
+                gate_ok, gate_factor, gate_note = strategy_gate(state, self.label, over)
         except Exception as exc:  # noqa: BLE001
             gate_note = f"情绪周期计算失败（{exc}），门控放行但需人工复核"
 

@@ -293,17 +293,29 @@ def _build_intraday_plan(settings: Settings, today: str) -> dict:
 
     prev = prev_trading_day(settings, today)
 
-    # 当日周期复核（2026-09-17）：盘中计划不能沿用昨日 17:00 的周期判定，
-    # 当日盘面剧变（黑天鹅/竞价跌停潮）应即时否决；复核失败按不否决处理并留日志
-    cycle_check: dict = {}
-    j = None
-    try:
-        from .cycle import classify, compute_indicators
+    # 门控状态合成（2026-09-29 重构，修"盘中计划用降级数据否决"问题）：
+    # 当日 classify 在 9:26 恒 data_degraded（炸板率/晋级率要等涨停池 ~14:56 入库），
+    # 降级判定不再直接用于否决；改为 当日classify(仅非降级采信) ⊕ T-1定版 ⊕ 实时恶化腿，
+    # 取更差者（恶化立即生效）。全部缺失 → UNKNOWN 不否决（绝不静默禁用）。
+    from .cycle import combined_gate_state, prev_finalized
 
-        j = classify(compute_indicators(settings, today))
-        cycle_check = {"state": j.state.value, "degraded": j.data_degraded}
+    pf = prev_finalized(settings, prev)
+    try:
+        j_today = classify(compute_indicators(settings, today))
     except Exception as exc:  # noqa: BLE001
-        log.warning("盘中计划：当日周期复核失败（%s），按不否决处理", exc)
+        log.warning("盘中计划：当日周期复核失败（%s），回退 T-1 定版+恶化腿", exc)
+        j_today = None
+    state, over_eff, gate_reasons, gate_degraded = combined_gate_state(
+        settings, today,
+        pf["state"] if pf else None, bool(pf["overheated"]) if pf else False, j_today,
+    )
+    cycle_check = {
+        "state": state.value if state else "UNKNOWN",
+        "degraded": gate_degraded or (j_today is not None and j_today.data_degraded),
+        "reasons": gate_reasons,
+        "source": ("today_classify" if (j_today is not None and not j_today.data_degraded)
+                   else ("prev_finalized+deterioration" if state else "none")),
+    }
 
     # 桶结构：{strategy_id: [pending...], "immediate": [...]} —— 与历史缓存兼容
     # （旧缓存键即 lianban/dragon = strategy_id）；cycle_factors 为当日周期仓位系数（M3）
@@ -315,12 +327,12 @@ def _build_intraday_plan(settings: Settings, today: str) -> dict:
     from .portfolio import apply_portfolio_limits, position_display
 
     for s in with_phase(intraday=True):
-        if j is not None:
+        if state is not None:
             from .cycle import strategy_gate as _gate
 
-            ok, factor, note = _gate(j.state, s.label, j.overheated)
+            ok, factor, note = _gate(state, s.label, over_eff)
             if not ok:
-                log.warning("盘中计划：%s 被当日周期否决（%s），本日不监控", s.label, note)
+                log.warning("盘中计划：%s 被周期门控否决（%s），本日不监控", s.label, note)
                 cycle_check.setdefault("vetoed", []).append(s.label)
                 continue
             plan["cycle_factors"][s.strategy_id] = factor
@@ -384,6 +396,7 @@ def _build_intraday_plan(settings: Settings, today: str) -> dict:
 def task_intraday(settings: Settings, today: str, st: dict) -> None:
     """盘中轮询：注册表驱动，各策略 confirm_intraday 判定触发。触发即落盘。"""
     from . import config_registry
+    from .cycle import compute_deterioration
     from .store import persist_report
     from .strategy import get_strategy, open_minute_fetcher
 
@@ -404,6 +417,30 @@ def task_intraday(settings: Settings, today: str, st: dict) -> None:
     ]
     if not todo:
         return
+
+    # 盘中恶化复检（每 5 分钟，2026-09-29）：恶化立即生效 → 当日剩余待监控票全部停止。
+    # 触发落盘 intraday_halt 报告（quant-web 推送前端）+ 通知；已触发建议不可撤回，仅停后续。
+    if not st.get("deterioration_fired"):
+        now_dt = datetime.now(SH_TZ)
+        last = st.get("deterioration_last")
+        if last is None or (now_dt - datetime.fromisoformat(last)).total_seconds() >= 300:
+            st["deterioration_last"] = now_dt.isoformat()
+            chk = compute_deterioration(settings, today)
+            if chk.triggered:
+                st["deterioration_fired"] = True
+                halted = [i["thscode"] for i, _sid in todo]
+                expired.update(halted)
+                st["intraday_expired"] = sorted(expired)
+                persist_report(settings, today, "intraday_halt", {
+                    "type": "intraday_halt", "date": today, "reasons": chk.reasons,
+                    "halted": halted, "ran_at": now_dt.isoformat(),
+                })
+                log.warning("盘中恶化复检触发（%s）→ 停止当日剩余监控 %s", chk.reasons, halted)
+                from .notify import notify
+
+                notify(f"盘中恶化（{'; '.join(chk.reasons)}），停止当日剩余监控 {len(halted)} 只", "盘中恶化停机")
+                save_state(settings, today, st)
+                return
 
     # 旧版缓存 item 可能缺 strategy 字段，按 strategy_id 桶补齐；
     # 更旧的无 strategy_id 桶（键固定 lianban/dragon），也按桶名回填

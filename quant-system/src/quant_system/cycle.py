@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -301,3 +302,128 @@ def strategy_gate(state: CycleState, strategy_name: str, overheated: bool = Fals
     if not allowed:
         note += " → 禁用"
     return allowed, factor, note
+
+
+# ============================== 竞价/盘中实时恶化腿（2026-09-29） ==============================
+
+
+@dataclass
+class DeteriorationCheck:
+    """竞价/盘中时点实时恶化检验结果。
+
+    背景（2026-09-28 实测）：9:25 竞价段当日 classify 恒 data_degraded
+    （炸板率/晋级率要等涨停池 ~14:56 才入库），旧门控用降级误判状态做放行/
+    否决均不可信；T-1 定版又看不见当日盘中恶化（09-28 早盘温度 47→14:45 跌至 27）。
+    本腿只用 9:25 时点实际可得且经标定有区分度的信号，触发即视同退潮级恶化
+    （恶化立即生效），不触发则维持 T-1 定版门控。
+    """
+
+    triggered: bool = False
+    reasons: list[str] = field(default_factory=list)
+    temperature: Optional[float] = None
+    yesterday_premium: Optional[float] = None   # 昨池竞价溢价（小数，-0.017=-1.7%）
+    limit_down_count: Optional[int] = None
+    data_degraded: bool = False                  # 快照缺失/字段缺失 → 不触发不否决
+
+
+def compute_deterioration(settings: Settings, date: str | None = None) -> DeteriorationCheck:
+    """9:25/盘中时点实时恶化检验（阈值标定 2026-09-29，样本 09-21/24/28 早盘快照）。
+
+    标定：昨池竞价溢价 加速日 +1.48% / 分歧日 +1.07% / 当日盘中恶化至退潮日 +0.38%；
+    竞价温度与跌停数在 9:25 时点区分度弱（09-28 早盘跌停仅 1 家，14:45 才 57 家）。
+    故判据保守取两条，宁少拦不误拦：
+    ① 昨池竞价溢价 ≤0（昨日涨停票今晨竞价整体转负=情绪急冻）
+    ② 竞价温度 < retreat_temp_floor（与退潮温度线同源 25）
+    快照缺失/关键字段缺失 → data_degraded=True，不触发不否决（绝不静默禁用）。
+    """
+    from .datasource.resolve import standard_market_sentiment
+    from .timeutil import sh_today
+
+    date = date or sh_today()
+    chk = DeteriorationCheck()
+    try:
+        sent: dict = standard_market_sentiment(settings, date)
+    except Exception:  # noqa: BLE001
+        sent = {}
+    if not sent:
+        chk.data_degraded = True
+        chk.reasons.append("实时情绪快照缺失，恶化腿不评估")
+        return chk
+    th = DEFAULT_THRESHOLDS
+    chk.temperature = sent.get("market_temperature")
+    chk.yesterday_premium = sent.get("yesterday_limit_up_avg_pcp")
+    ld = sent.get("limit_down_count")
+    chk.limit_down_count = int(ld) if ld is not None else None
+    p = chk.yesterday_premium
+    if p is not None and p <= 0:
+        chk.triggered = True
+        chk.reasons.append(f"昨池竞价溢价 {p * 100:.2f}%≤0（情绪急冻）")
+    if chk.temperature is not None and chk.temperature < th.retreat_temp_floor:
+        chk.triggered = True
+        chk.reasons.append(f"竞价温度 {chk.temperature:.1f}<{th.retreat_temp_floor:.0f}")
+    if p is None and chk.temperature is None:
+        chk.data_degraded = True
+        chk.reasons.append("快照缺溢价/温度字段，恶化腿不评估")
+    return chk
+
+
+def prev_finalized(settings: Settings, prev: str) -> Optional[dict]:
+    """读 qg 侧上一交易日盘后定版（advice/{prev}/cycle_*.json 最新一份）。
+
+    返回 {"state": CycleState, "overheated": bool}；文件缺失/解析失败 → None
+    （门控按"无定版"处理，绝不静默禁用）。
+    """
+    files = (settings.data_dir / "advice" / prev).glob("cycle_*.json")
+    files = [f for f in files]
+    if not files:
+        return None
+    # 按 mtime 取最新写入：文件名 HHMMSS 字典序会把回补文件（如 013057）
+    # 排在常规盘后文件（170034）之前而漏选（2026-09-29 单测抓出）
+    latest = max(files, key=lambda p: p.stat().st_mtime)
+    try:
+        j = json.loads(latest.read_text())
+        return {"state": CycleState(j["state"]), "overheated": bool(j.get("overheated"))}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def worst_state(*states: Optional[CycleState]) -> Optional[CycleState]:
+    """按安全优先级（退潮>分歧>冰点>加速>修复>转折）取最差状态；全 None → None。"""
+    cand = [s for s in states if s is not None]
+    return min(cand, key=_RETREAT_FIRST.index) if cand else None
+
+
+def combined_gate_state(
+    settings: Settings,
+    date: str,
+    prev_state: Optional[CycleState],
+    prev_overheated: bool = False,
+    today_j: Optional[CycleJudgement] = None,
+) -> tuple[Optional[CycleState], bool, list[str], bool]:
+    """竞价/盘中门控状态合成（2026-09-29，修 T-0036 审计"竞价门控时序"问题）。
+
+    - 当日 classify 非降级 → 采信为基准；降级 → 回退 T-1 定版
+    - 实时恶化腿（compute_deterioration）触发 → 视同退潮，与基准取更差者
+      （恶化立即生效，用户确认规则）
+    - 全部缺失 → (None, ...)：调用方按"绝不静默禁用"放行并留痕
+
+    返回 (state|None, overheated, reasons, degraded)。
+    """
+    chk = compute_deterioration(settings, date)
+    det = CycleState.RETREAT if chk.triggered else None
+    reasons = list(chk.reasons)
+
+    if today_j is not None and not today_j.data_degraded:
+        base, over = today_j.state, today_j.overheated
+        reasons = list(today_j.reasons) + reasons
+    else:
+        base, over = prev_state, prev_overheated
+        if today_j is not None and today_j.data_degraded:
+            reasons.append("当日判定数据降级，不采信")
+        if prev_state is not None:
+            reasons.append(f"T-1 定版={prev_state.value}")
+
+    state = worst_state(base, det)
+    if state is None:
+        reasons.append("无T-1定版且恶化腿未触发 → 放行（绝不静默禁用）")
+    return state, over, reasons, chk.data_degraded

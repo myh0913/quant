@@ -136,3 +136,150 @@ class TestGate:
         th = CycleThresholds(retreat_break_ratio=0.99)  # 抬高退潮线
         j = classify(ind(break_ratio=0.55, promotion_rate=0.10), th=th)
         assert j.state != CycleState.RETREAT
+
+
+# ============================== 竞价/盘中实时恶化腿（2026-09-29） ==============================
+
+
+def _settings(tmp_path):
+    from quant_system.config import Settings
+
+    s = Settings.__new__(Settings)  # 不触发 .env 重载
+    s.data_dir = tmp_path
+    return s
+
+
+def _sent(monkeypatch, payload: dict | None):
+    """打在 resolve 源头：compute_deterioration 函数级导入 standard_market_sentiment。"""
+    from quant_system.datasource import resolve as _resolve
+
+    if payload is None:
+        def _boom(_s, _d=None):
+            raise RuntimeError("源故障")
+    else:
+        def _boom(_s, _d=None):
+            return payload
+    monkeypatch.setattr(_resolve, "standard_market_sentiment", _boom)
+
+
+class TestDeterioration:
+    """实时恶化腿：阈值标定 09-21/24/28 早盘快照（温度/跌停早盘区分度弱，溢价为主判据）。"""
+
+    def test_premium_negative_triggers(self, tmp_path, monkeypatch):
+        _sent(monkeypatch, {"market_temperature": 47.0, "yesterday_limit_up_avg_pcp": -0.017})
+        from quant_system.cycle import compute_deterioration
+
+        chk = compute_deterioration(_settings(tmp_path), "2026-09-28")
+        assert chk.triggered and any("溢价" in r for r in chk.reasons)
+
+    def test_premium_0928_real_value_not_triggered(self, tmp_path, monkeypatch):
+        # 09-28 早盘真实值：溢价 +0.38%、温度 46.96 → 竞价时点未恶化，不触发
+        _sent(monkeypatch, {"market_temperature": 46.96, "yesterday_limit_up_avg_pcp": 0.0038,
+                            "limit_down_count": 1})
+        from quant_system.cycle import compute_deterioration
+
+        chk = compute_deterioration(_settings(tmp_path), "2026-09-28")
+        assert not chk.triggered and not chk.data_degraded
+
+    def test_low_temperature_triggers(self, tmp_path, monkeypatch):
+        _sent(monkeypatch, {"market_temperature": 21.0, "yesterday_limit_up_avg_pcp": 0.005})
+        from quant_system.cycle import compute_deterioration
+
+        chk = compute_deterioration(_settings(tmp_path), "2026-09-28")
+        assert chk.triggered and any("温度" in r for r in chk.reasons)
+
+    def test_missing_snapshot_degraded_not_triggered(self, tmp_path, monkeypatch):
+        _sent(monkeypatch, None)
+        from quant_system.cycle import compute_deterioration
+
+        chk = compute_deterioration(_settings(tmp_path), "2026-09-28")
+        assert not chk.triggered and chk.data_degraded
+
+    def test_missing_fields_degraded_not_triggered(self, tmp_path, monkeypatch):
+        _sent(monkeypatch, {"rise_count": 100})
+        from quant_system.cycle import compute_deterioration
+
+        chk = compute_deterioration(_settings(tmp_path), "2026-09-28")
+        assert not chk.triggered and chk.data_degraded
+
+
+class TestPrevFinalized:
+    def test_parse_latest(self, tmp_path):
+        from quant_system.cycle import CycleState, prev_finalized
+
+        s = _settings(tmp_path)
+        d = s.data_dir / "advice" / "2026-09-28"
+        d.mkdir(parents=True)
+        (d / "cycle_170034.json").write_text('{"state": "分歧", "overheated": false}', encoding="utf-8")
+        (d / "cycle_013057.json").write_text('{"state": "退潮", "overheated": false}', encoding="utf-8")
+        pf = prev_finalized(s, "2026-09-28")
+        assert pf["state"] == CycleState.RETREAT  # 取最新一份
+
+    def test_missing_returns_none(self, tmp_path):
+        from quant_system.cycle import prev_finalized
+
+        assert prev_finalized(_settings(tmp_path), "2026-09-28") is None
+
+    def test_bad_json_returns_none(self, tmp_path):
+        from quant_system.cycle import prev_finalized
+
+        s = _settings(tmp_path)
+        d = s.data_dir / "advice" / "2026-09-28"
+        d.mkdir(parents=True)
+        (d / "cycle_170034.json").write_text("{broken", encoding="utf-8")
+        assert prev_finalized(s, "2026-09-28") is None
+
+
+class TestWorstState:
+    def test_ordering(self):
+        from quant_system.cycle import CycleState, worst_state
+
+        assert worst_state(CycleState.DIVERGE, CycleState.RETREAT) == CycleState.RETREAT
+        assert worst_state(CycleState.REPAIR, CycleState.ACCEL) == CycleState.ACCEL
+        assert worst_state(None, CycleState.ICE) == CycleState.ICE
+        assert worst_state(None, None) is None
+
+
+class TestCombinedGateState:
+    def test_today_trusted_used_as_base(self, tmp_path, monkeypatch):
+        from quant_system import cycle as cy
+
+        s = _settings(tmp_path)
+        _sent(monkeypatch, {"market_temperature": 47.0, "yesterday_limit_up_avg_pcp": 0.0038})
+        today_j = cy.CycleJudgement(state=cy.CycleState.REPAIR, data_degraded=False)
+        state, _over, reasons, _deg = cy.combined_gate_state(s, "2026-09-28", cy.CycleState.DIVERGE, False, today_j)
+        assert state == cy.CycleState.REPAIR
+
+    def test_today_degraded_falls_back_to_prev(self, tmp_path, monkeypatch):
+        from quant_system import cycle as cy
+
+        s = _settings(tmp_path)
+        _sent(monkeypatch, {"market_temperature": 47.0, "yesterday_limit_up_avg_pcp": 0.0038})
+        today_j = cy.CycleJudgement(state=cy.CycleState.DIVERGE, data_degraded=True)
+        state, _over, reasons, _deg = cy.combined_gate_state(
+            s, "2026-09-28", cy.CycleState.DIVERGE, False, today_j)
+        assert state == cy.CycleState.DIVERGE
+        assert any("T-1 定版" in r for r in reasons)
+        assert any("数据降级" in r for r in reasons)
+
+    def test_deterioration_overrides_prev_diverge(self, tmp_path, monkeypatch):
+        """恶化立即生效：T-1 分歧 + 竞价溢价转负 → 按退潮否决。"""
+        from quant_system import cycle as cy
+
+        s = _settings(tmp_path)
+        _sent(monkeypatch, {"market_temperature": 47.0, "yesterday_limit_up_avg_pcp": -0.01})
+        today_j = cy.CycleJudgement(state=cy.CycleState.DIVERGE, data_degraded=True)
+        state, _over, reasons, _deg = cy.combined_gate_state(
+            s, "2026-09-28", cy.CycleState.DIVERGE, False, today_j)
+        assert state == cy.CycleState.RETREAT
+
+    def test_all_missing_returns_none_pass(self, tmp_path, monkeypatch):
+        """无 T-1 定版 + 当日降级 + 恶化腿未触发 → None（调用方放行）。"""
+        from quant_system import cycle as cy
+
+        s = _settings(tmp_path)
+        _sent(monkeypatch, {"market_temperature": 47.0, "yesterday_limit_up_avg_pcp": 0.0038})
+        today_j = cy.CycleJudgement(state=cy.CycleState.DIVERGE, data_degraded=True)
+        state, _over, reasons, _deg = cy.combined_gate_state(s, "2026-09-28", None, False, today_j)
+        assert state is None
+        assert any("放行" in r for r in reasons)
