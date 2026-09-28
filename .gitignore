@@ -42,6 +42,16 @@ credentials.env
 .DS_Store
 Thumbs.db
 
+# ---------------------------------------------------------------- 运行期落库/落盘数据（quant-web 后端）
+# quant.db 为 SQLite 运行时落库；lianban_ladder/ 由调度器按交易日生成。
+# 程序一写入就弄脏 git status，还会卡住后续 pull（T-0033，2026-09-28）
+quant-web/backend/quant.db
+quant-web/backend/quant.db-*
+quant-web/backend/data/lianban_ladder/
+
+# quant-system 手动备份目录（一次性产物）
+quant-system/data.bak.*/
+
 # ---------------------------------------------------------------- 运行日志
 # 注：logs/ 下的日志已被跟踪（用于跨机排查），此处不忽略
 *.pid
