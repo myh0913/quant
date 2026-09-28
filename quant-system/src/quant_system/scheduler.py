@@ -22,6 +22,7 @@ import json
 import logging
 import time as _time
 from datetime import datetime, timedelta
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -49,8 +50,13 @@ def _calendar_cache(settings: Settings) -> Path:
     return settings.data_dir / "state" / "calendar.json"
 
 
-def _fetch_calendar(settings: Settings, need: str | None = None) -> set[str]:
+def _fetch_calendar(settings: Settings, need: str | None = None) -> tuple[set[str], bool]:
     """交易日列表（hithink 交易日历，缓存 5 天）。失败抛异常由调用方兜底。
+
+    返回 (dates, authoritative)：authoritative=True 表示「本次取数成功」或
+    「缓存为查询日当天写入」——源在交易日当天开盘前必然已包含当天
+    （2026-09-28 实测：交易日 00:00 取数已含当日；09-25 中秋当天取数止于 09-24），
+    因此权威日历"未列出今天"= 今天休市，可作为节假日判定依据。
 
     ⚠️ 上游日历只发布到"最近交易日"，跨交易日后旧缓存必然不覆盖当天。若 need
       （通常=今天）超出缓存覆盖范围，则改为最多每 1 小时强制刷新一次；
@@ -68,7 +74,7 @@ def _fetch_calendar(settings: Settings, need: str | None = None) -> set[str]:
             covered = not need or (dates and need <= max(dates))
             ttl = timedelta(days=5) if covered else timedelta(hours=1)
             if now - fetched < ttl:
-                return dates
+                return dates, fetched.date() == now.date()
         except Exception:  # noqa: BLE001
             pass
     from .datasource.resolve import standard_trading_days
@@ -92,23 +98,27 @@ def _fetch_calendar(settings: Settings, need: str | None = None) -> set[str]:
     cache.write_text(
         json.dumps({"fetched_at": datetime.now(SH_TZ).isoformat(), "dates": dates}, ensure_ascii=False)
     )
-    return set(dates)
+    return set(dates), True
 
 
 _fallback_logged: set[str] = set()  # 已记过日志的日期（tick 15s 一次，避免刷屏）
+_holiday_logged: set[str] = set()  # 权威日历判休市的日期（避免刷屏）
 
 
 def is_trading_day(settings: Settings, date: str) -> bool:
     """交易日判定。
     - 日历覆盖内：以日历为准（节假日正确排除）
-    - 超出日历覆盖范围的未来日期：上游日历只发布到最近交易日，次日 0 点起当天必然
-      "未覆盖"——按周一至五兜底，否则每个交易日早晨调度器都会静默空转
+    - 权威日历（本次取数成功或缓存为当日写入）未列出且 date≤今天：判休市
+      ——源开盘前即知当天开闭市，交易日当天必含当日（2026-09-25 中秋实测：
+       当天取数止于 09-24，旧逻辑走周几兜底导致休市日全管线照跑产出脏数据）
+    - 未来日期 / 日历获取失败 / 缓存非当日写入：周一至五兜底，否则每个交易日
+      早晨调度器都会静默空转
       （2026-09-09 实测踩坑：竞价/盘中全天未跑且无任何告警）
-    - 日历获取失败：周一至五兜底
     """
     wd = datetime.strptime(date, "%Y-%m-%d").weekday() < 5
+    today = now_sh().strftime("%Y-%m-%d")
     try:
-        cal = _fetch_calendar(settings, need=date)
+        cal, authoritative = _fetch_calendar(settings, need=date)
     except Exception as exc:  # noqa: BLE001
         log.warning("交易日历获取失败（%s），按周一至五兜底", exc)
         return wd
@@ -117,6 +127,11 @@ def is_trading_day(settings: Settings, date: str) -> bool:
     if date in cal:
         return True
     if cal and date > max(cal):
+        if date <= today and authoritative:
+            if date not in _holiday_logged:
+                _holiday_logged.add(date)
+                log.info("交易日历（权威）未列出 %s → 判休市", date)
+            return False
         if date not in _fallback_logged:
             _fallback_logged.add(date)
             log.info("交易日历未覆盖 %s（日历最远 %s），按周一至五兜底", date, max(cal))
@@ -127,8 +142,8 @@ def is_trading_day(settings: Settings, date: str) -> bool:
 def prev_trading_day(settings: Settings, date: str) -> str:
     """上一个交易日。"""
     try:
-        cal = sorted(_fetch_calendar(settings, need=date))
-        before = [d for d in cal if d < date]
+        cal, _auth = _fetch_calendar(settings, need=date)
+        before = [d for d in sorted(cal) if d < date]
         if before:
             return before[-1]
     except Exception:  # noqa: BLE001
@@ -154,7 +169,7 @@ def load_state(settings: Settings, date: str) -> dict:
         except Exception:  # noqa: BLE001
             pass
     return {"auction_done": False, "intraday_ended": False, "intraday_last": None,
-            "tailpan_done": False, "postmarket_done": False,
+            "tailpan_done": False, "postmarket_done": False, "postmarket_catchup_done": False,
             "intraday_triggered": [], "intraday_expired": []}
 
 
@@ -189,6 +204,19 @@ def should_tick(now: datetime, st: dict, window: tuple[str, str], interval_s: in
 
 def window_passed(now: datetime, end_hm: str) -> bool:
     return now.strftime("%H:%M") > end_hm
+
+
+def should_catchup_postmarket(now: datetime, st: dict) -> bool:
+    """盘后窗口（17:00-18:00）已错过且当天从未成功跑过 → 当天内补跑一次。
+
+    覆盖场景：窗口内服务中断/重启导致 postmarket 整体缺失
+    （2026-09-28 实测：14:45 后服务消失、18:18 维护重启，17:00 建池/复盘/周期
+    定版全部没跑，且复盘断档——09-24 建议永久漏结算）。补跑只试一次，
+    失败不再自动重试（避免每 15s tick 打上游），留给 --once postmarket 手动补。
+    """
+    return (window_passed(now, POSTMARKET_WINDOW[1])
+            and not st.get("postmarket_done")
+            and not st.get("postmarket_catchup_done"))
 
 
 # ============================== 任务 ==============================
@@ -498,13 +526,16 @@ def task_tailpan(settings: Settings) -> str:
     return run_tailpan_pool(settings, today, prev)
 
 
-def task_postmarket(settings: Settings) -> str:
-    """17:00 盘后：注册表驱动建池（明日候选）+ 情绪周期判定，全部落盘。"""
+def task_postmarket(settings: Settings, date: str | None = None) -> str:
+    """17:00 盘后：注册表驱动建池（明日候选）+ 情绪周期判定，全部落盘。
+
+    date 缺省=今天；回补历史交易日传 --date（建池/周期/复盘均按该日数据执行）。
+    """
     from .cycle import classify, compute_indicators
     from .store import persist_report
     from .strategy import with_phase
 
-    today = now_sh().strftime("%Y-%m-%d")
+    today = date or now_sh().strftime("%Y-%m-%d")
     summaries = []
 
     for s in with_phase(pool=True):
@@ -621,9 +652,44 @@ def tick_once(settings: Settings, now: datetime | None = None) -> dict:
             _persist_task_error(settings, today, "postmarket", exc)
         changed = True
 
+    # 盘后补跑：窗口已错过（服务中断/重启）且当天从未成功 → 当天内补跑一次
+    if should_catchup_postmarket(now, st):
+        try:
+            log.warning("postmarket 窗口已过仍未完成，执行补跑（%s）", today)
+            task_postmarket(settings)
+            st["postmarket_done"] = True
+        except Exception as exc:  # noqa: BLE001
+            log.exception("postmarket 补跑失败（不再自动重试，可 --once postmarket 手动补）")
+            _persist_task_error(settings, today, "postmarket_catchup", exc)
+        st["postmarket_catchup_done"] = True
+        changed = True
+
     if changed:
         save_state(settings, today, st)
     return st
+
+
+def _setup_logging() -> None:
+    """stdout（systemd journal）+ 文件双通道；文件不可用不影响调度。
+
+    2026-09-28 实测教训：journal -u quant-scheduler 只有 systemd 启停记录、
+    logs/scheduler.log 停在 09-20，17:00 盘后管线缺失后完全无法归因。
+    """
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    stream = logging.StreamHandler()
+    stream.setFormatter(fmt)
+    root.addHandler(stream)
+    try:
+        log_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        fh = RotatingFileHandler(log_dir / "scheduler.log",
+                                 maxBytes=5_000_000, backupCount=3, encoding="utf-8")
+        fh.setFormatter(fmt)
+        root.addHandler(fh)
+    except Exception:  # noqa: BLE001
+        pass  # 日志文件不可用不阻断调度（仍有 stdout）
 
 
 def run_loop(settings: Settings | None = None, tick_seconds: int = 15) -> None:
@@ -634,7 +700,7 @@ def run_loop(settings: Settings | None = None, tick_seconds: int = 15) -> None:
     from .datasource.registry import export_datasources
 
     export_datasources(settings)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    _setup_logging()
     log.info("quant-system 调度器启动（tick=%ss，Ctrl+C 退出）", tick_seconds)
     while True:
         try:
@@ -654,6 +720,7 @@ def run_loop(settings: Settings | None = None, tick_seconds: int = 15) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description="quant-system 内置调度器")
     ap.add_argument("--once", choices=["auction", "intraday", "tailpan", "postmarket"], help="手动单跑一个任务")
+    ap.add_argument("--date", help="配合 --once postmarket：回补指定交易日（缺省=今天）")
     args = ap.parse_args()
     settings = Settings()
     settings.ensure_dirs()
@@ -661,7 +728,7 @@ def main() -> None:
     from .datasource.registry import export_datasources
 
     export_datasources(settings)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    _setup_logging()
 
     if not args.once:
         run_loop(settings)
@@ -676,7 +743,7 @@ def main() -> None:
     elif args.once == "tailpan":
         print(task_tailpan(settings))
     else:
-        print(task_postmarket(settings))
+        print(task_postmarket(settings, args.date))
 
 
 if __name__ == "__main__":

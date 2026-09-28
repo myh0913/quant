@@ -2,6 +2,7 @@
 
 2026-09-08 实测回归：hithink 交易日历返回 YYYYMMDD 紧凑格式，
 必须归一化为 YYYY-MM-DD 再比对（否则全天任务被静默跳过）。
+2026-09-29 回归：权威日历判休市（09-25 中秋休市日全管线照跑）+ 盘后补跑。
 """
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ from zoneinfo import ZoneInfo
 from quant_system.scheduler import (
     in_window,
     load_state,
+    should_catchup_postmarket,
     should_run_once,
     should_tick,
     window_passed,
@@ -113,8 +115,109 @@ class TestCalendarFormat:
                 return {"item": [{"date": "20260905"}, {"date": "20260908"}]}, {}
 
         monkeypatch.setitem(ds_registry._SOURCE_CLS, "hithink", _FakeHS)
-        dates = _fetch_calendar(s)
+        dates, _auth = _fetch_calendar(s)
         assert "2026-09-08" in dates
         assert "20260908" not in dates
         cached = json.loads((tmp_path / "state" / "calendar.json").read_text())
         assert "2026-09-08" in cached["dates"]
+
+
+class TestIsTradingDay:
+    """权威日历判休市（2026-09-29 回归）。
+
+    09-25 中秋踩坑：旧逻辑对"日历未覆盖当天"一律周一至五兜底，休市日照跑
+    全管线。新口径：本次取数成功/缓存为当日写入（authoritative）且 date≤今天
+    且未列出 → 休市；未来日期/取数失败/陈旧缓存仍周几兜底（09-09 防空转保留）。
+    """
+
+    def _settings(self, tmp_path):
+        from quant_system.config import Settings
+
+        s = Settings.__new__(Settings)
+        s.data_dir = tmp_path
+        return s
+
+    def test_authoritative_calendar_not_listing_today_is_holiday(self, tmp_path, monkeypatch):
+        """当天成功取数仍未列出今天 → 休市（09-25 中秋回归）。"""
+        from quant_system import scheduler as sched
+
+        s = self._settings(tmp_path)
+        monkeypatch.setattr(sched, "_fetch_calendar", lambda settings, need=None: ({"2026-09-24"}, True))
+        today = sched.now_sh().strftime("%Y-%m-%d")
+        assert sched.is_trading_day(s, today) is False
+
+    def test_trading_day_listed_is_trading(self, tmp_path, monkeypatch):
+        from quant_system import scheduler as sched
+
+        s = self._settings(tmp_path)
+        today = sched.now_sh().strftime("%Y-%m-%d")
+        monkeypatch.setattr(sched, "_fetch_calendar", lambda settings, need=None: ({today}, True))
+        assert sched.is_trading_day(s, today) is True
+
+    def test_stale_cache_uncovered_falls_back_to_weekday(self, tmp_path, monkeypatch):
+        """缓存非当日写入（陈旧）且未覆盖今天 → 周几兜底（09-09 防空转保留）。"""
+        from quant_system import scheduler as sched
+
+        s = self._settings(tmp_path)
+        monkeypatch.setattr(sched, "_fetch_calendar", lambda settings, need=None: ({"2026-09-24"}, False))
+        today = sched.now_sh().strftime("%Y-%m-%d")
+        wd = datetime.strptime(today, "%Y-%m-%d").weekday() < 5
+        assert sched.is_trading_day(s, today) is wd
+
+    def test_fetch_failure_falls_back_to_weekday(self, tmp_path, monkeypatch):
+        from quant_system import scheduler as sched
+
+        s = self._settings(tmp_path)
+
+        def _boom(settings, need=None):
+            raise RuntimeError("上游故障")
+
+        monkeypatch.setattr(sched, "_fetch_calendar", _boom)
+        today = sched.now_sh().strftime("%Y-%m-%d")
+        wd = datetime.strptime(today, "%Y-%m-%d").weekday() < 5
+        assert sched.is_trading_day(s, today) is wd
+
+    def test_future_date_uncovered_falls_back_to_weekday(self, tmp_path, monkeypatch):
+        """未来日期未覆盖 → 周几兜底（不误杀未来交易日）。"""
+        from quant_system import scheduler as sched
+
+        s = self._settings(tmp_path)
+        monkeypatch.setattr(sched, "_fetch_calendar", lambda settings, need=None: ({"2026-09-24"}, True))
+        wd = datetime.strptime("2026-10-09", "%Y-%m-%d").weekday() < 5
+        assert sched.is_trading_day(s, "2026-10-09") is wd
+
+    def test_holiday_inside_coverage_is_false(self, tmp_path, monkeypatch):
+        """日历覆盖内的历史休市日 → False（原行为保留）。"""
+        from quant_system import scheduler as sched
+
+        s = self._settings(tmp_path)
+        monkeypatch.setattr(
+            sched, "_fetch_calendar",
+            lambda settings, need=None: ({"2026-09-21", "2026-09-22", "2026-09-24"}, True),
+        )
+        assert sched.is_trading_day(s, "2026-09-25") is False
+        assert sched.is_trading_day(s, "2026-09-24") is True
+
+
+class TestCatchupPostmarket:
+    """盘后窗口错过（服务中断/重启）→ 当天内补跑一次（2026-09-29 回归）。"""
+
+    def test_catchup_when_window_passed_and_never_ran(self):
+        st = {"postmarket_done": False, "postmarket_catchup_done": False}
+        assert should_catchup_postmarket(at("18:20"), st)
+
+    def test_no_catchup_when_done(self):
+        st = {"postmarket_done": True, "postmarket_catchup_done": False}
+        assert not should_catchup_postmarket(at("18:20"), st)
+
+    def test_no_catchup_when_already_caught_up(self):
+        st = {"postmarket_done": False, "postmarket_catchup_done": True}
+        assert not should_catchup_postmarket(at("18:20"), st)
+
+    def test_no_catchup_inside_window(self):
+        st = {"postmarket_done": False, "postmarket_catchup_done": False}
+        assert not should_catchup_postmarket(at("17:30"), st)
+
+    def test_no_catchup_before_window(self):
+        st = {"postmarket_done": False, "postmarket_catchup_done": False}
+        assert not should_catchup_postmarket(at("15:00"), st)
