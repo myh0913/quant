@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -221,3 +222,137 @@ class TestCatchupPostmarket:
     def test_no_catchup_before_window(self):
         st = {"postmarket_done": False, "postmarket_catchup_done": False}
         assert not should_catchup_postmarket(at("15:00"), st)
+
+
+class TestIntradayPlanClassifyImport:
+    """B2 回归（T-0070）：`_build_intraday_plan` 必须导入并使用 classify。
+
+    2026-09-29 起生产逐字日志：`name 'classify' is not defined` → 当日周期复核
+    腿恒失败、回退「T-1 定版+恶化腿」（09:26 竞价时点当日判定恒为降级，回退
+    结果与设计预期等效、影响≈0，但 source/reasons 失真，缺陷本身须修复）。
+    """
+
+    def _settings(self, tmp_path):
+        from quant_system.config import Settings
+
+        s = Settings.__new__(Settings)
+        s.data_dir = tmp_path
+        return s
+
+    def test_build_plan_calls_classify_for_today(self, tmp_path, monkeypatch):
+        from quant_system import config_registry, portfolio, scheduler as sched, strategy
+        from quant_system import cycle, store
+
+        monkeypatch.setattr(sched, "prev_trading_day", lambda settings, today: "2026-09-29")
+        monkeypatch.setattr(cycle, "prev_finalized", lambda settings, date: None)
+        sentinel = object()
+        seen: dict = {}
+        monkeypatch.setattr(cycle, "compute_indicators", lambda settings, date=None: sentinel)
+
+        class _J:
+            data_degraded = True
+
+        def _classify(ind):
+            seen["ind"] = ind
+            return _J()
+
+        monkeypatch.setattr(cycle, "classify", _classify)
+        monkeypatch.setattr(
+            cycle, "combined_gate_state",
+            lambda settings, today, pf_state, pf_hot, j_today: (None, False, [], False),
+        )
+        monkeypatch.setattr(strategy, "with_phase", lambda **kw: [])
+        monkeypatch.setattr(config_registry, "load_active", lambda settings: {"version": 1})
+        monkeypatch.setattr(portfolio, "apply_portfolio_limits", lambda items, settings: {})
+        monkeypatch.setattr(store, "persist_report", lambda *a, **kw: None)
+
+        plan = sched._build_intraday_plan(self._settings(tmp_path), "2026-09-30")
+
+        # 修复前：classify 未导入 → NameError 被吞 → classify 从未被调用（断言红）
+        assert seen.get("ind") is sentinel
+        assert plan["immediate"] == []
+
+
+class TestDeteriorationRecheckDecoupled:
+    """B1 回归（T-0070）：恶化复检与 todo 解耦。
+
+    2026-09-30 实证：09:42 E 类触发致 todo 清空后，复检在 `if not todo: return`
+    早退处永久停摆至 10:00；若 10:00 前恶化，halt 通知不再推送。修复后复检块
+    先于早退执行（todo 已空时 halted 为空列表，仍落盘+通知+落状态）。
+    """
+
+    def _settings(self, tmp_path):
+        from quant_system.config import Settings
+
+        s = Settings.__new__(Settings)
+        s.data_dir = tmp_path
+        return s
+
+    def _write_plan(self, tmp_path, today, triggered_codes):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        plan = {
+            "lianban": [
+                {"strategy": "连板捉妖", "strategy_id": "lianban", "thscode": c,
+                 "name": c, "scene": "B", "detail": ""}
+                for c in triggered_codes
+            ],
+            "dragon": [],
+            "immediate": [],
+            "cycle_factors": {},
+        }
+        (state_dir / f"intraday-plan-{today}.json").write_text(
+            json.dumps(plan, ensure_ascii=False)
+        )
+
+    def test_recheck_runs_when_todo_empty(self, tmp_path, monkeypatch):
+        """todo 已清空（全部已触发/过期）→ 复检仍按 5 分钟间隔执行并落时间戳。"""
+        from quant_system import cycle, scheduler as sched
+
+        today = "2026-09-30"
+        self._write_plan(tmp_path, today, ["600001.SH"])
+        st = {"deterioration_last": None, "intraday_triggered": ["600001.SH"], "intraday_expired": []}
+        called: dict = {}
+
+        def _chk(settings, date=None):
+            called["hit"] = True
+            return cycle.DeteriorationCheck()
+
+        monkeypatch.setattr(cycle, "compute_deterioration", _chk)
+
+        sched.task_intraday(self._settings(tmp_path), today, st)
+
+        # 修复前：todo 为空 → 早退、复检从不执行（断言红）
+        assert "hit" in called
+        assert st["deterioration_last"] is not None
+
+    def test_halt_still_notified_when_todo_empty(self, tmp_path, monkeypatch):
+        """todo 已清空且恶化触发 → 仍落盘 intraday_halt + 通知 + 状态写回。"""
+        from quant_system import cycle, notify as notify_mod, scheduler as sched, store
+
+        today = "2026-09-30"
+        self._write_plan(tmp_path, today, ["600001.SH"])
+        st = {"deterioration_last": None, "intraday_triggered": ["600001.SH"], "intraday_expired": []}
+        monkeypatch.setattr(
+            cycle, "compute_deterioration",
+            lambda settings, date=None: cycle.DeteriorationCheck(
+                triggered=True, reasons=["测试触发"]
+            ),
+        )
+        persisted: list = []
+        notified: list = []
+        monkeypatch.setattr(
+            store, "persist_report",
+            lambda settings, d, kind, payload: persisted.append((kind, payload)),
+        )
+        monkeypatch.setattr(
+            notify_mod, "notify", lambda text, title="": notified.append((title, text))
+        )
+
+        sched.task_intraday(self._settings(tmp_path), today, st)
+
+        assert st.get("deterioration_fired") is True
+        assert [k for k, _ in persisted] == ["intraday_halt"]
+        assert persisted[0][1]["halted"] == []
+        assert notified and "盘中恶化" in notified[0][1]
+        assert sched.load_state(self._settings(tmp_path), today)["deterioration_fired"] is True

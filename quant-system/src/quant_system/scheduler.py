@@ -297,7 +297,9 @@ def _build_intraday_plan(settings: Settings, today: str) -> dict:
     # 当日 classify 在 9:26 恒 data_degraded（炸板率/晋级率要等涨停池 ~14:56 入库），
     # 降级判定不再直接用于否决；改为 当日classify(仅非降级采信) ⊕ T-1定版 ⊕ 实时恶化腿，
     # 取更差者（恶化立即生效）。全部缺失 → UNKNOWN 不否决（绝不静默禁用）。
-    from .cycle import combined_gate_state, prev_finalized
+    # T-0070 修复：classify/compute_indicators 此前漏导入 → NameError 被吞、当日复核腿
+    # 恒失败回退（09-29 起每日日志「name 'classify' is not defined」）。
+    from .cycle import classify, combined_gate_state, compute_indicators, prev_finalized
 
     pf = prev_finalized(settings, prev)
     try:
@@ -415,11 +417,11 @@ def task_intraday(settings: Settings, today: str, st: dict) -> None:
         (i, sid) for sid, items in plan.items() if sid not in _skip_keys for i in items
         if i["thscode"] not in triggered and i["thscode"] not in expired
     ]
-    if not todo:
-        return
-
     # 盘中恶化复检（每 5 分钟，2026-09-29）：恶化立即生效 → 当日剩余待监控票全部停止。
     # 触发落盘 intraday_halt 报告（quant-web 推送前端）+ 通知；已触发建议不可撤回，仅停后续。
+    # T-0070：复检须先于 todo 早退执行 —— 09-30 实证 todo 清空（E 类触发）后，复检在
+    # `if not todo: return` 处永久停摆至 10:00（末次复检 09:41:16，09:56/57 窗口命中点
+    # 未被采到）；todo 已空时 halted=[] 仍照常落盘+通知，告知"监控已无对象、恶化仍在"。
     if not st.get("deterioration_fired"):
         now_dt = datetime.now(SH_TZ)
         last = st.get("deterioration_last")
@@ -441,6 +443,9 @@ def task_intraday(settings: Settings, today: str, st: dict) -> None:
                 notify(f"盘中恶化（{'; '.join(chk.reasons)}），停止当日剩余监控 {len(halted)} 只", "盘中恶化停机")
                 save_state(settings, today, st)
                 return
+
+    if not todo:
+        return
 
     # 旧版缓存 item 可能缺 strategy 字段，按 strategy_id 桶补齐；
     # 更旧的无 strategy_id 桶（键固定 lianban/dragon），也按桶名回填
